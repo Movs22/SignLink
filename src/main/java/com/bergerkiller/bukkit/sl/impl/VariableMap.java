@@ -10,20 +10,33 @@ import org.bukkit.block.Block;
 
 import com.bergerkiller.bukkit.common.collections.ImplicitlySharedSet;
 import com.bergerkiller.bukkit.sl.LinkedSign;
+import com.bergerkiller.bukkit.sl.SignLink;
 import com.bergerkiller.bukkit.sl.API.Variable;
 
 /**
  * Stores all the variable made available by the plugin
  */
 public class VariableMap {
-		    /**
-		     * Default instance, which is used at runtime.
-		     * For tests, please create a new VariableMap
-		     * each time, instead.
-		     */
-		    public static final VariableMap INSTANCE = new VariableMap() {
-		
-		    };
+    /**
+     * Default instance, which is used at runtime.
+     * For tests, please create a new VariableMap
+     * each time, instead.
+     */
+    public static final VariableMap INSTANCE = new VariableMap() {
+        @Override
+        protected void onVariableRemoved(Variable variable) {
+            // Clean up from the editing metadata
+            SignLink.plugin.removeEditing(variable);
+        }
+
+        @Override
+        protected void onVariableCreated(Variable variable) {
+            // If PAPI is enabled, initialize the variable values
+            if (SignLink.plugin.papi != null) {
+                SignLink.plugin.papi.refreshVariableForAll(variable);
+            }
+        }
+    };
 
     private final HashMap<String, VariableImpl> variablesMap = new HashMap<String, VariableImpl>();
     private final ImplicitlySharedSet<VariableImpl> variablesSet = new ImplicitlySharedSet<VariableImpl>();
