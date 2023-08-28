@@ -23,17 +23,12 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 
-import com.bergerkiller.bukkit.common.MessageBuilder;
 import com.bergerkiller.bukkit.common.utils.CommonUtil;
-import com.bergerkiller.bukkit.common.utils.StringUtil;
 import com.bergerkiller.bukkit.common.utils.WorldUtil;
 import com.bergerkiller.bukkit.sl.API.Variable;
 import com.bergerkiller.bukkit.sl.API.Variables;
@@ -92,45 +87,6 @@ public class SLListener implements Listener {
 
         // Update sign order and other information the next tick (after this sign is placed)
         VirtualSign.updateSign(event.getBlock(), SignSide.sideChanged(event), event.getLines());
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onSignChange(final SignChangeEvent event) {
-        //Convert colors
-        for (int i = 0; i < VirtualLines.LINE_COUNT; i++) {
-            event.setLine(i, StringUtil.ampToColor(event.getLine(i)));
-        }
-    
-        //General stuff...
-        boolean allowvar = Permission.ADDSIGN.has(event.getPlayer());
-        boolean showedDisallowMessage = false;
-        final ArrayList<String> varnames = new ArrayList<String>();
-        for (int i = 0; i < VirtualLines.LINE_COUNT; i++) {
-            String varname = Variables.parseVariableName(event.getLine(i));
-            if (varname != null) {
-                if (allowvar) {
-                    varnames.add(varname);
-                } else {
-                    if (!showedDisallowMessage) {
-                        showedDisallowMessage = true;
-                        event.getPlayer().sendMessage(ChatColor.RED + "Failed to create a sign linking to variable '" + varname + "'!");
-                    }
-                    event.setLine(i, event.getLine(i).replace('%', ' '));
-                }
-            }
-        }
-        if (varnames.isEmpty()) {
-            return;
-        }
-
-        // Send a message to the player showing that SignLink has responded
-        MessageBuilder message = new MessageBuilder().green("You made a sign linking to ");
-        if (varnames.size() == 1) {
-            message.append("variable: ").yellow(varnames.get(0));
-        } else {
-            message.append("variables: ").yellow(StringUtil.join(" ", varnames));
-        }
-        message.send(event.getPlayer());
     }
 
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
@@ -238,36 +194,4 @@ public class SLListener implements Listener {
         Variables.removeLocation(event.getBlock());
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        final Player p = event.getPlayer();
-
-        // Store early
-        this.playersByLowercaseName.put(p.getName().toLowerCase(), p);
-
-        if (SignLink.plugin.papi != null) {
-            SignLink.plugin.papi.refreshVariables(p);
-        }
-        Variables.get("playername").forPlayer(p).set(p.getName());
     }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onPlayerTeleport(PlayerTeleportEvent event) {
-        if (SignLink.plugin.papi != null) {
-            final Player p = event.getPlayer();
-            CommonUtil.nextTick(new Runnable() {
-                public void run() {
-                    SignLink.plugin.papi.refreshVariables(p);
-                }
-            });
-        }
-    }
-    
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        VirtualSign.invalidateAll(event.getPlayer());
-
-        // Cleanup
-        this.playersByLowercaseName.remove(event.getPlayer().getName().toLowerCase());
-    }
-}
